@@ -1,15 +1,36 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const routes = require('./routs');
 const path = require('path');
+const socketio = require('socket.io');
+const http = require('http')
 
+const routes = require('./routes');
 
 const app = express();
+const server = http.Server(app);
+const io = socketio(server);
+
 mongoose.connect('mongodb+srv://pedrosv:omnistack@omni9-iqegd.mongodb.net/semana9?retryWrites=true&w=majority', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
+
+const connectedUsers = {};
+
+io.on('connection', socket => {
+
+    const {user_id} = socket.handshake.query;
+    connectedUsers[user_id] = socket.id;
+});
+
+app.use((req, res, next)=> {
+    req.io = io;
+    req.connectedUsers = connectedUsers;
+
+    return next();
+});
+
 //req.query = acessar query params (para filtros) /users/2
 //req.params = acessar route params (edicao e delete) /users?id=2
 //req.body = Acessar corpo da requisicao  json
@@ -19,4 +40,4 @@ app.use(express.json());
 app.use('/files', express.static(path.resolve(__dirname, '..', 'uploads')));
 app.use(routes);
 
-app.listen(3333);
+server.listen(3333);
